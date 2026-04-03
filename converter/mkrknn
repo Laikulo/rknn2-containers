@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+
+import argparse
+from contextlib import contextmanager
+
+from typing import Callable
+
+VALID_PLATFORMS={
+        'rk2118',
+        'rk3562',
+        'rk3566',
+        'rk3568',
+        'rk3576',
+        'rk3588',
+        'rv1103',
+        'rv1103b',
+        'rv1106',
+        'rv1106b',
+        'rv1126b'
+        }
+
+QUANT_REQUIRED_PLATFORMS={
+        'rv1103',
+        'rv1106',
+        'rv1103b',
+        'rv1106b',
+        }
+
+@contextmanager
+def RKNNSession(*args, **kwargs):
+    from rknn.api import RKNN as rknn2_ctx
+    rknn = rknn2_ctx(*args, **kwargs)
+    try:
+        yield rknn
+    finally:
+        rknn.release()
+
+
+def ok(c: Callable, *args, **kwargs) -> None:
+    ret = c(*args, **kwargs)
+    if ret:
+        raise RuntimeError(f'Wrapped {c.__name__} returned rc {ret}')
+    
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-v", dest="verbose", action="store_true")
+    platsel=ap.add_mutually_exclusive_group(required=True)
+    platsel.add_argument("platform", nargs="?")
+    platsel.add_argument("--platform", dest="platform_list", nargs="*")
+    platsel.add_argument("--all-platforms", dest="all_platforms", action="store_true")
+    ap.add_argument("--quantize", action="store_true")
+    ap.add_argument("source_type")
+    ap.add_argument("source_path")
+    ap.add_argument("output")
+
+    args = ap.parse_args()
+
+    if args.platform:
+        platforms = { args.platform, }
+        suffix_outputs = False
+    elif args.platform_list:
+        platforms = { *args.platform_list, }
+        suffix_builds = True
+    elif args.all_platforms:
+        suffix_builds = True
+        if args.quantize:
+            platforms = VALID_PLATFORMS
+        else:
+            platforms = VALID_PLATFORMS - QUANT_REQUIRED_PLATFORMS
+
+
+    if unsupported_platforms := (platforms - VALID_PLATFORMS):
+        print(f"The following patform(s) are not supported: {','.join(unsupported_platforms)}.")
+        return 2
+
+    rk_sess_opts = {
+            'verbose': args.verbose
+            }
+    rk_config_opts = {
+            # TODO: Bring these in from args, and come ip with a reasonable format
+            'mean_values': [[0,0,0]],
+            'std_values': [[255,255,255]]
+            }
+    rk_build_opts = {
+            'do_quantization': args.quantize
+            }
+
+    for platform in platforms:
+        dest = (args.output + "-" + platform) if suffix_builds else args.output
+        convert_model(platform, args.source_type, args.source_path, dest, rk_sess_opts, rk_config_opts, rk_build_opts)
+
+def convert_model(platform, source_type, source, output, sess_opts={}, extra_config_opts={}, build_opts={}) -> None:
+    with RKNNSession(**sess_opts) as rk:
+        config_opts = {
+                'target_platform': platform,
+                }
+        config_opts.update(extra_config_opts)
+        rk.config(**config_opts)
+        if source_type == "onnx":
+            ok(rk.load_onnx, model=source)
+        else:
+            raise ValueError(f"Unknown model type {source}")
+        ok(rk.build, **build_opts)
+        ok(rk.export_rknn, output)
+
+
+if __name__ == "__main__":
+	raise SystemExit(main())

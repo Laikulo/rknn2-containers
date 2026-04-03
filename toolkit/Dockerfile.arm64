@@ -19,6 +19,6 @@ RUN \
     python3 -m venv --upgrade-deps /opt/rknn && \
     /opt/rknn/bin/pip3 install --find-links=/whl --no-index --only-binary ':all:' "rknn-toolkit2" && \
     /opt/rknn/bin/pip3 uninstall -y opencv-python && \
-    /opt/rknn/bin/pip3 install opencv-python-headless && \
+    /opt/rknn/bin/pip3 install opencv-python-headless 'onnx<1.19' 'setuptools<81' && \
     /opt/rknn/bin/pip3 cache purge
 ENV PATH="/opt/rknn/bin:$PATH"

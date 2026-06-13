@@ -100,8 +100,11 @@ def convert_model(platform, source_type, source, output, sess_opts={}, extra_con
         rk.config(**config_opts)
         if source_type == "onnx":
             ok(rk.load_onnx, model=source)
+        elif source_type == "darknet":
+            toks=source.split(",",1)
+            ok(rk.load_darknet, model=toks[0], weight=toks[1])
         else:
-            raise ValueError(f"Unknown model type {source}")
+            raise ValueError(f"Unknown model type {source_type}")
         ok(rk.build, **build_opts)
         ok(rk.export_rknn, output)
 

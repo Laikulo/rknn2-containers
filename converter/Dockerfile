@@ -6,4 +6,6 @@ LABEL \
     org.opencontainers.image.title="RKNN2 Toolkit Converter" \
     org.opencontainers.image.description="Tools for converting models into RKNN2 format"
 
+RUN pip install PyYAML
+
 ADD mkrknn rknn_convert /usr/local/bin

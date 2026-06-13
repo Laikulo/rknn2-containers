@@ -4,7 +4,7 @@ RUN \
     apt-get update && \
     apt-get install -y python3.11 python3.11-dev python3-pip build-essential cmake && \
     mkdir /whl && \
-    pip wheel -w /whl "$rknn_toolkit_whl" \
+    pip wheel -w /whl "$rknn_toolkit_whl"
     # We don't bother cleaning here, since this stage won't be shipped
 
 FROM docker.io/library/debian:bookworm-slim
